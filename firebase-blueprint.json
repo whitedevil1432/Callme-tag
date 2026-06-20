@@ -1,0 +1,145 @@
+{
+  "entities": {
+    "Admin": {
+      "title": "Admin",
+      "description": "Administrator account credentials and roles",
+      "type": "object",
+      "properties": {
+        "password": {
+          "type": "string",
+          "description": "Decentralized admin login password"
+        },
+        "is_admin": {
+          "type": "boolean",
+          "description": "Administrative authority flag"
+        }
+      },
+      "required": ["password", "is_admin"]
+    },
+    "Reseller": {
+      "title": "Reseller",
+      "description": "Authorized partner reseller with workspace limits",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full name of the reseller agent"
+        },
+        "contact": {
+          "type": "string",
+          "description": "WhatsApp or mobile contact info"
+        },
+        "password": {
+          "type": "string",
+          "description": "Reseller login clearance password"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp of the reseller account"
+        }
+      },
+      "required": ["name", "contact", "password", "created_at"]
+    },
+    "Tag": {
+      "title": "Tag",
+      "description": "Print-ready windshield CallMe Tag profiling vehicle plates and owners",
+      "type": "object",
+      "properties": {
+        "owner_name": {
+          "type": "string",
+          "description": "Vehicle driver or profile owner's name"
+        },
+        "phone_number": {
+          "type": "string",
+          "description": "Windshield profile phone contact"
+        },
+        "plate_number": {
+          "type": "string",
+          "description": "Dubai vehicle plate identifier label"
+        },
+        "emergency_contact_name": {
+          "type": "string",
+          "description": "Optional secondary backup contact person"
+        },
+        "emergency_contact_number": {
+          "type": "string",
+          "description": "Secondary contact phone number"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "hold"],
+          "description": "Current status of dynamic locator routing"
+        },
+        "created_by": {
+          "type": "string",
+          "description": "Account who issued this tag system profile"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["owner_name", "phone_number", "status", "created_by"]
+    },
+    "ScanLog": {
+      "title": "ScanLog",
+      "description": "Recorded physical tag scans with timestamps",
+      "type": "object",
+      "properties": {
+        "qr_id": {
+          "type": "string"
+        },
+        "scanned_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "qr_type": {
+          "type": "string"
+        }
+      },
+      "required": ["qr_id", "scanned_at"]
+    },
+    "WhatsAppClick": {
+      "title": "WhatsAppClick",
+      "description": "Click actions to trace rates limits for direct messaging",
+      "type": "object",
+      "properties": {
+        "qr_id": {
+          "type": "string"
+        },
+        "clicked_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["qr_id", "clicked_at"]
+    }
+  },
+  "firestore": {
+    "admins": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Collection of administrator credentials"
+    },
+    "resellers": {
+      "schema": { "$ref": "#/entities/Reseller" },
+      "description": "Collection of workspace resellers"
+    },
+    "tags": {
+      "schema": { "$ref": "#/entities/Tag" },
+      "description": "Windshield identifier CallMe tags database"
+    },
+    "scan_logs": {
+      "schema": { "$ref": "#/entities/ScanLog" },
+      "description": "Audit and count logs of scanned QR tags"
+    },
+    "whatsapp_clicks": {
+      "schema": { "$ref": "#/entities/WhatsAppClick" },
+      "description": "Interactive rate-limiting clicks tracking history"
+    }
+  }
+}
