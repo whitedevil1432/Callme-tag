@@ -516,46 +516,121 @@ export default function AdminPanel() {
       setOwnerPairSuccess('');
       setIsPairingLoading(true);
 
-      if (!ownerPlateInput || !ownerPhoneInput) {
-        setOwnerPairError("Please fill out both your Plate Number and Mobile Number.");
+      const enteredCode = ownerPlateInput.trim();
+      const enteredPhone = ownerPhoneInput.trim();
+
+      if (!enteredCode || !enteredPhone) {
+        setOwnerPairError("Please fill out both fields.");
         setIsPairingLoading(false);
         return;
       }
 
-      // Query firestore to find active tag matching this plate and phone
-      const tagsRef = collection(db, 'tags');
-      const q = query(
-        tagsRef,
-        where('plate_number', '==', ownerPlateInput.trim().toUpperCase()),
-        where('phone_number', '==', ownerPhoneInput.trim())
-      );
+      const inputCodeUpper = enteredCode.toUpperCase();
 
-      const querySnap = await getDocs(q);
-      if (querySnap.empty) {
-        setOwnerPairError("No active CallMe Tag found matching this plate number and phone number combination. Please double check.");
-        setIsPairingLoading(false);
-        return;
-      }
-
-      // Find first active tag
-      let foundTagId: string | null = null;
-      querySnap.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (data.status === 'active') {
-          foundTagId = docSnap.id;
+      // Phone comparison helper inside the function for full scope accessibility
+      const isPhoneMatch = (phoneA: string, phoneB: string): boolean => {
+        if (!phoneA || !phoneB) return false;
+        const digitsA = phoneA.replace(/[^\d]/g, '');
+        const digitsB = phoneB.replace(/[^\d]/g, '');
+        if (!digitsA || !digitsB) return false;
+        if (digitsA === digitsB) return true;
+        const len = Math.min(digitsA.length, digitsB.length, 9);
+        if (len >= 7) {
+          if (digitsA.slice(-len) === digitsB.slice(-len)) return true;
         }
-      });
+        return false;
+      };
 
-      if (!foundTagId) {
-        setOwnerPairError("The found CallMe Tag is currently paused/inactive. Please contact your Agent reseller.");
+      const maskPhone = (phone: string): string => {
+        const trimmed = phone.trim();
+        if (trimmed.length <= 4) return "****";
+        return `${trimmed.slice(0, 3)}*****${trimmed.slice(-3)}`;
+      };
+
+      let foundTags: any[] = [];
+
+      // A. Try direct QR ID (Document ID) lookup
+      try {
+        const docRef = doc(db, 'tags', inputCodeUpper);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          foundTags.push({ qr_id: docSnap.id, ...docSnap.data() });
+        }
+      } catch (err) {
+        console.error("Error doing direct QR ID lookup:", err);
+      }
+
+      // B. Try direct query by plate_number (uppercase)
+      try {
+        const q1 = query(collection(db, 'tags'), where('plate_number', '==', inputCodeUpper));
+        const snap1 = await getDocs(q1);
+        snap1.forEach((docSnap) => {
+          if (!foundTags.some(t => t.qr_id === docSnap.id)) {
+            foundTags.push({ qr_id: docSnap.id, ...docSnap.data() });
+          }
+        });
+      } catch (err) {
+        console.error("Error doing uppercase plate number lookup:", err);
+      }
+
+      // C. Try query by plate_number (as entered)
+      if (enteredCode !== inputCodeUpper) {
+        try {
+          const q2 = query(collection(db, 'tags'), where('plate_number', '==', enteredCode));
+          const snap2 = await getDocs(q2);
+          snap2.forEach((docSnap) => {
+            if (!foundTags.some(t => t.qr_id === docSnap.id)) {
+              foundTags.push({ qr_id: docSnap.id, ...docSnap.data() });
+            }
+          });
+        } catch (err) {
+          console.error("Error doing raw plate number lookup:", err);
+        }
+      }
+
+      // If no tags were found at all
+      if (foundTags.length === 0) {
+        setOwnerPairError(`No CallMe Tag found with QR ID or Plate Number matching "${enteredCode}". Please make sure it is a registered tag or check your input.`);
+        setIsPairingLoading(false);
+        return;
+      }
+
+      // We have candidate tag(s)! Let's verify the phone number.
+      let matchingTag: any = null;
+      let phoneMismatchDetails = "";
+
+      for (const tag of foundTags) {
+        const regPhone = tag.phone_number || "";
+        const emergPhone = tag.emergency_contact_number || "";
+
+        const isRegMatch = isPhoneMatch(regPhone, enteredPhone);
+        const isEmergMatch = isPhoneMatch(emergPhone, enteredPhone);
+
+        if (isRegMatch || isEmergMatch) {
+          matchingTag = tag;
+          break;
+        } else {
+          phoneMismatchDetails = `Found registered Tag "${tag.qr_id}" (Plate: "${tag.plate_number || 'N/A'}"), but its registered phone number (${maskPhone(regPhone)}) does not match your entered number "${enteredPhone}". Please use the exact number used during registration.`;
+        }
+      }
+
+      if (!matchingTag) {
+        setOwnerPairError(phoneMismatchDetails || "The phone number entered does not match the registered owner phone number for this tag.");
+        setIsPairingLoading(false);
+        return;
+      }
+
+      if (matchingTag.status !== 'active') {
+        setOwnerPairError(`The CallMe Tag "${matchingTag.qr_id}" is currently inactive/paused. Please contact your Agent reseller to activate it.`);
         setIsPairingLoading(false);
         return;
       }
 
       // Successful pairing!
-      localStorage.setItem('paired_qr_id', foundTagId);
-      setPairedQrId(foundTagId);
-      setOwnerPairSuccess("Vehicle paired successfully! Launching Live Shield Dashboard.");
+      const targetQrId = matchingTag.qr_id;
+      localStorage.setItem('paired_qr_id', targetQrId);
+      setPairedQrId(targetQrId);
+      setOwnerPairSuccess(`Vehicle "${matchingTag.plate_number || targetQrId}" successfully paired! Launching live dashboard...`);
       
       setTimeout(() => {
         setShowOwnerPairModal(false);
@@ -566,7 +641,7 @@ export default function AdminPanel() {
 
     } catch (err) {
       console.error("Error pairing owner tag:", err);
-      setOwnerPairError("An error occurred during pairing. Please try again.");
+      setOwnerPairError("An unexpected error occurred during pairing. Please try again.");
     } finally {
       setIsPairingLoading(false);
     }
@@ -2367,12 +2442,12 @@ export default function AdminPanel() {
 
                 <div className="space-y-1" id="pair-plate-group">
                   <label className="block text-[10px] font-extrabold uppercase text-slate-400 tracking-wider" htmlFor="pair-plate-input">
-                    UAE Plate Number
+                    QR ID or UAE Plate Number
                   </label>
                   <input
                     id="pair-plate-input"
                     type="text"
-                    placeholder="e.g. C54125 or DXB 4125"
+                    placeholder="e.g. D617859 or T14324"
                     value={ownerPlateInput}
                     onChange={(e) => setOwnerPlateInput(e.target.value)}
                     className="w-full px-4 py-3 bg-white border border-[#DDDAD3] rounded-xl font-mono text-sm text-[#14171A] uppercase font-black focus:ring-2 focus:ring-[#D98F1F] focus:border-transparent outline-none transition-all"
@@ -2386,7 +2461,7 @@ export default function AdminPanel() {
                   <input
                     id="pair-phone-input"
                     type="text"
-                    placeholder="e.g. +971501234567"
+                    placeholder="e.g. 0564437476 or +971564437476"
                     value={ownerPhoneInput}
                     onChange={(e) => setOwnerPhoneInput(e.target.value)}
                     className="w-full px-4 py-3 bg-white border border-[#DDDAD3] rounded-xl font-sans text-sm text-[#14171A] font-semibold focus:ring-2 focus:ring-[#D98F1F] focus:border-transparent outline-none transition-all"
