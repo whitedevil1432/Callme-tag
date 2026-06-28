@@ -26,6 +26,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Alarms collection - real-time vehicle alarm alerts and quick replies
+    match /alarms/{alarmId} {
+      allow read, write: if true;
+    }
+
     // Default safety net deny rule
     match /{document=**} {
       allow read, write: if false;

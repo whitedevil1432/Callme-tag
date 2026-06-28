@@ -68,7 +68,7 @@ async function startServer() {
           </div>
 
           <div style="text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 15px; margin-top: 20px;">
-            Dubai QR Contact Management System Security Workspace • Automated dispatch
+            UAE QR Contact Management System Security Workspace • Automated dispatch
           </div>
         </div>
       `;

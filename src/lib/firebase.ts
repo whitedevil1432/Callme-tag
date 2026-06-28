@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, memoryLocalCache } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   projectId: "quaint-entropy-bd2jw",
@@ -20,4 +21,6 @@ export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
   localCache: memoryLocalCache()
 }, firebaseConfig.firestoreDatabaseId);
+
+export const auth = getAuth(app);
 

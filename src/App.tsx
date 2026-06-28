@@ -34,7 +34,11 @@ export default function App() {
         const qrId = cleanHash.split('c/')[1]?.split('/')[0] || '';
         if (qrId) return { type: 'finder', qrId };
       } else if (cleanHash) {
-        return { type: 'finder', qrId: cleanHash };
+        // Exclude landing page section hashes from being treated as QR IDs
+        const landingHashes = ['how-it-works', 'features', 'business-details', 'simulator', 'faq'];
+        if (!landingHashes.includes(cleanHash)) {
+          return { type: 'finder', qrId: cleanHash };
+        }
       }
     }
     

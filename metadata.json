@@ -1,7 +1,9 @@
 {
   "name": "CallMe Tag",
-  "description": "Secure Dubai vehicle QR contact system. Admin panel lets field agents register vehicle owners and print offline-capable contact dynamic QR codes.",
-  "requestFramePermissions": [],
+  "description": "Secure UAE vehicle QR contact system. Admin panel lets field agents register vehicle owners and print offline-capable contact dynamic QR codes.",
+  "requestFramePermissions": [
+    "camera"
+  ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
